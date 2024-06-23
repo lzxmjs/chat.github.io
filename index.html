@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <title>南京CITY WALK智能问答</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Microsoft+YaHei:wght@400;700&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; font-family: 'Noto Sans SC', sans-serif; background-color: #f5f5f7; color: #333; font-size: 90%; overflow-y: hidden; }
+        .container { display: flex; flex-direction: column; min-height: 100vh; padding: 18px; overflow: hidden; }
+        .header { background: linear-gradient(135deg, #8e2de2 0%, #4a00e0 100%); color: #fff; padding: 13.5px; text-align: center; border-radius: 10.8px; box-shadow: 0 9px 27px rgba(0, 0, 0, 0.1); margin-bottom: 18px; animation: slideInFromTop 0.5s ease-out; }
+        .header h1 { margin: 0; font-size: 1.62em; }
+        .header p { margin: 4.5px 0 0; font-size: 0.81em; }
+        .content { display: flex; flex: 1; gap: 18px; }
+        .leftSide, .middleSection, .rightSide { background: #fff; border-radius: 10.8px; box-shadow: 0 9px 27px rgba(0, 0, 0, 0.1); overflow: hidden; }
+        .leftSide { flex: 0.35; animation: slideInFromLeft 0.5s ease-out; }
+        .middleSection { flex: 0.45; display: flex; flex-direction: column; animation: slideInFromRight 0.5s ease-out; }
+        .rightSide { flex: 0.2; display: flex; flex-direction: column; animation: slideInFromRight 0.5s ease-out; }
+        .middleSection .header { height: 63px; display: flex; justify-content: space-between; align-items: center; padding: 0 18px; margin-bottom: 0; }
+        .middleSection .userimg { width: 45px; height: 45px; overflow: hidden; border-radius: 50%; border: 1.8px solid #fff; }
+        .middleSection .userimg img { width: 100%; height: 100%; object-fit: cover; }
+        .middleSection .imgText { display: flex; align-items: center; }
+        .middleSection .imgText h4 { margin-left: 13.5px; font-weight: 500; }
+        .middleSection .imgText h4 span { font-size: 0.72em; color: #e0e0e0; display: flex; align-items: center; }
+        .middleSection .imgText h4 span::before { content: ""; display: inline-block; width: 7.2px; height: 7.2px; background: #5cff11; border-radius: 50%; margin-right: 4.5px; }
+        .middleSection .chatBox { flex: 1; padding: 18px; overflow-y: auto; background: #f7f8fc; max-height: calc(100vh - 300px); }
+        .middleSection .message { display: flex; margin: 9px 0; text-align: justify; line-height: 1.2; animation: fadeIn 0.5s ease-out; }
+        .middleSection .message p { max-width: 80%; padding: 13.5px; border-radius: 9px; font-size: 0.81em; box-shadow: 0 1.8px 5.4px rgba(0, 0, 0, 0.1); margin-bottom: 0.45em; text-align: justify; }
+        .middleSection .message span { font-size: 0.63em; color: #999; }
+        .middleSection .my_message { justify-content: flex-end; }
+        .middleSection .my_message p { background: #8e2de2; color: #fff; text-align: right; }
+        .middleSection .frnd_message p { background: #fff; text-align: justify; }
+        .middleSection .button-container { display: flex; justify-content: space-around; margin-bottom: 13.5px; }
+        .middleSection .button-container button { padding: 9px 18px; border: none; border-radius: 27px; background-color: #8e2de2; color: #fff; font-size: 0.9em; cursor: pointer; transition: background-color 0.3s ease; flex: 1; margin: 0 4.5px;}
+        .middleSection .button-container button:hover { background-color: #6a1b9a; }
+        .middleSection .chatbox_inputall { display: flex; flex-direction: column; padding: 13.5px; background: #fff; box-shadow: 0 -1.8px 5.4px rgba(0, 0, 0, 0.1); animation: slideInFromBottom 0.5s ease-out; }
+        .middleSection .chatbox_input { display: flex; align-items: center; animation: slideInFromBottom 0.5s ease-out; }
+        .middleSection .chatbox_input input { flex: 1; padding: 9px 18px; border: 0.9px solid #ddd; border-radius: 27px; font-size: 0.9em; outline: none; margin-right: 9px; }
+        .middleSection .chatbox_input button { width: 72px; height: 36px; border: none; border-radius: 18px; background: linear-gradient(135deg, #8e2de2 0%, #4a00e0 100%); color: #fff; font-size: 0.9em; cursor: pointer; transition: background 0.3s; }
+        .middleSection .chatbox_input button:hover { background: linear-gradient(135deg, #6a1b9a 0%, #4a148c 100%); }
+        .middleSection .chatBox::-webkit-scrollbar { width: 5.4px; }
+        .middleSection .chatBox::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 2.7px; }
+        .middleSection .chatBox::-webkit-scrollbar-thumb { background: #a8a8a8; border-radius: 2.7px; }
+        .middleSection .chatBox::-webkit-scrollbar-thumb:hover { background: #7f7f7f; }
+        .conversationManager { padding: 18px; display: flex; flex-direction: column; height: 100%; }
+        .conversationManager h3 { margin-bottom: 13.5px; }
+        .conversationList { flex: 1; overflow-y: auto; margin-bottom: 13.5px; border: 2px solid #ddd; border-radius: 5px; }
+        .conversationItem { display: flex; justify-content: space-between; align-items: center; padding: 9px; border-bottom: 0.9px solid #eee; }
+        .conversationItem:last-child { border-bottom: none; }
+        .conversationItem button { margin-left: 4.5px; padding: 4.5px 9px; border: none; background: #8e2de2; color: white; border-radius: 4.5px; cursor: pointer; }
+        .managerButtons { margin-top: auto; }
+        .managerButtons button { width: 100%; padding: 9px; margin-bottom: 9px; border: none; background: #8e2de2; color: white; border-radius: 4.5px; cursor: pointer; }
+        .managerButtons button:last-child { background: #ff4d4d; margin-bottom: 0; }
+        @keyframes fade { 0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0; } }
+        .loading-dots { display: flex; align-items: center; justify-content: center; }
+        .loading-dots span { display: inline-block; width: 9px; height: 9px; margin: 0 2.7px; background-color: white; border-radius: 50%; opacity: 0; animation: fade 1.5s infinite; }
+        .loading-dots span:nth-child(1) { animation-delay: 0s; }
+        .loading-dots span:nth-child(2) { animation-delay: 0.3s; }
+        .loading-dots span:nth-child(3) { animation-delay: 0.6s; }
+        @media (max-width: 768px) { .content { flex-direction: column; } .leftSide, .middleSection, .rightSide { width: 100%; } }
+        .carousel { position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: 10.8px; box-shadow: 0 9px 27px rgba(0, 0, 0, 0.1); }
+        .carousel img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; opacity: 0; transition: opacity 1s ease-in-out; }
+        .carousel img.active { opacity: 1; }
+        .carousel .controls { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); display: flex; justify-content: center; align-items: center; background: rgba(255, 255, 255, 0.5); border-radius: 13.5px; padding: 4.5px 9px; }
+        .carousel .controls button { background: rgba(0, 0, 0, 0.5); border: none; width: 9px; height: 9px; border-radius: 50%; margin: 0 4.5px; cursor: pointer; transition: background 0.3s ease; }
+        .carousel .controls button.active { background: rgba(0, 0, 0, 0.8); }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideInFromLeft { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideInFromRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideInFromTop { from { transform: translateY(-45px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes slideInFromBottom { from { transform: translateY(45px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>南京 CITY WALK 智能问答</h1>
+            <p>探索南京的美景与文化 ，享受城市漫游的安逸与乐趣</p>
+        </div>
+        <div class="content">
+            <div class="leftSide">
+                <div class="carousel">
+                    <img src="pic/1.png" class="active"><img src="pic/2.png"><img src="pic/3.png"><img src="pic/4.png"><img src="pic/5.png"><img src="pic/6.png"><img src="pic/7.png"><img src="pic/8.png"><img src="pic/9.png"><img src="pic/10.png">
+                    <div class="controls">
+                        <button class="dot active" data-index="0"></button><button class="dot" data-index="1"></button><button class="dot" data-index="2"></button><button class="dot" data-index="3"></button><button class="dot" data-index="4"></button><button class="dot" data-index="5"></button><button class="dot" data-index="6"></button><button class="dot" data-index="7"></button><button class="dot" data-index="8"></button><button class="dot" data-index="9"></button>
+                    </div>
+                </div>
+            </div>
+            <div class="middleSection">
+                <div class="header">
+                    <div class="imgText">
+                        <div class="userimg">
+                            <img src="./resource/icon.png" class="cover">
+                        </div>
+                        <h4>TravelChat路线规划助手<br><span>在线</span></h4>
+                    </div>
+                </div>
+                <div id="chatBox" class="chatBox">
+                    <div class="message frnd_message">
+                        <p>欢迎使用CityWalk路线规划AI助手，输入您的需求，我将为您推荐合适的路线。<br><span id="time"></span></p>
+                    </div>
+                </div>
+                <div class="chatbox_inputall">
+                <div class="button-container">
+                    <button id="regenerate-button">重新生成</button>
+                    <button id="back-to-top-button">回到顶部</button>
+                    <button id="scroll-to-bottom-button">回到底部</button>
+                </div>
+                <div class="chatbox_input">
+                    <input id="chatInput" type="text" placeholder="输入您的问题...">
+                    <button id="chatbox_input_send">发送</button>
+                </div>
+            </div>
+            </div>
+            <div class="rightSide">
+                <div class="conversationManager">
+                    <h3>对话管理</h3>
+                    <div class="conversationList" id="conversationList">
+                    </div>
+                    <div class="managerButtons">
+                        <button id="newConversation">新建对话</button>
+                        <button id="saveConversation">保存当前对话</button>
+                        <button id="exportConversation">导出对话为TXT</button>
+                        <button id="clearConversation">清空当前对话</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.getElementById('time').innerHTML = new Date().toLocaleString();
+        let conversations = [];
+        let lastUserMessage = ""; // 用于存储用户最后一次发送的消息
+
+
+        // Function to show loading animation on the send button
+        function showLoadingAnimation() {
+            const sendButton = document.getElementById('chatbox_input_send');
+            sendButton.disabled = true;
+            sendButton.innerHTML = '<div class="loading-dots"><span></span><span></span><span></span></div>';
+        }
+
+        // Function to hide loading animation on the send button
+        function hideLoadingAnimation() {
+            const sendButton = document.getElementById('chatbox_input_send');
+            sendButton.disabled = false;
+            sendButton.innerHTML = '发送';
+        }
+
+        // 发送消息
+        document.getElementById('chatbox_input_send').addEventListener('click', () => {
+            const inputValue = document.getElementById('chatInput').value.trim();
+            if (inputValue) {
+                handleSend(inputValue);
+            } else {
+                // Error message for empty input
+                alert('请输入您的问题！');
+            }
+        });
+        
+        document.getElementById('chatInput').addEventListener('keydown', function (event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                document.getElementById('chatbox_input_send').click();
+            }
+        });
+        
+        function handleSend(inputValue) {
+            // 在发送消息之前显示加载动画
+            showLoadingAnimation();
+        
+            lastUserMessage = inputValue;
+            const sendButton = document.getElementById('chatbox_input_send');
+        
+            if (inputValue.length > 50) {
+                alert('您输入的问题过长！');
+                sendButton.disabled = false;
+                sendButton.innerHTML = '发送';
+                return;
+            }
+        
+            addMessage(inputValue, true);
+            document.getElementById('chatInput').value = "";
+        
+            const thinkingMessage = addMessage('AI思考中...', false);
+        
+            const params = {
+                model: 'gpt-3.5-turbo',
+                messages: [{ role: 'user', content: inputValue }],
+            };
+        
+            fetch('https://openai.api2d.net/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer fk225135-NysOL4kJjjBaZda35CHhAIwEnezfefQI'
+                },
+                body: JSON.stringify(params)
+            })
+            .then(response => response.json())
+            .then(data => {
+                thinkingMessage.remove();
+                const content = data.choices[0].message.content;
+                typeMessage(content); // 在 typeMessage 函数内部控制加载动画的隐藏
+        
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                thinkingMessage.remove();
+                addMessage('抱歉,出现了一些错误。请稍后再试。', false);
+        
+                // 在出现错误时也需要隐藏加载动画
+                hideLoadingAnimation();
+            });
+        }
+        
+        function addMessage(content, isUser) {
+            const chatBox = document.getElementById('chatBox');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = isUser ? 'message my_message' : 'message frnd_message';
+            messageDiv.innerHTML = `<p>${content}<br><span>${new Date().toLocaleString()}</span></p>`;
+            chatBox.appendChild(messageDiv);
+            scrollToBottom();
+            // 返回新添加的消息元素
+            return messageDiv;
+        }
+        
+        function typeMessage(content) {
+            const chatBox = document.getElementById('chatBox');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message frnd_message';
+            const paragraph = document.createElement('p');
+            messageDiv.appendChild(paragraph);
+            chatBox.appendChild(messageDiv);
+        
+            let i = 0;
+            const timer = setInterval(() => {
+                if (i < content.length) {
+                    paragraph.textContent += content[i];
+                    i++;
+                    scrollToBottom();
+                } else {
+                    clearInterval(timer);
+                    paragraph.innerHTML += `<br><span>${new Date().toLocaleString()}</span>`;
+                    scrollToBottom();
+        
+                    // 在所有文字输出完毕后隐藏加载动画
+                    hideLoadingAnimation();
+                }
+            }, 50);
+        }
+        
+        function scrollToBottom() {
+            const chatBox = document.getElementById('chatBox');
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function scrollToTop() {
+            const chatBox = document.getElementById('chatBox');
+            chatBox.scrollTop = 0;
+        }
+        
+        let currentIndex = 0;
+        const images = document.querySelectorAll('.carousel img');
+        const dots = document.querySelectorAll('.carousel .dot');
+        const totalImages = images.length;
+        
+        function updateCarousel(index) {
+            images.forEach((img, i) => img.classList.toggle('active', i === index));
+            dots.forEach((dot, i) => dot.classList.toggle('active', i === index));
+        }
+        
+        dots.forEach((dot, index) => {
+            dot.addEventListener('click', () => {
+                currentIndex = index;
+                updateCarousel(currentIndex);
+            });
+        });
+        
+        function autoSlide() {
+            currentIndex = (currentIndex + 1) % totalImages;
+            updateCarousel(currentIndex);
+        }
+        
+        setInterval(autoSlide, 5000);
+        updateCarousel(currentIndex);
+        
+        document.getElementById('newConversation').addEventListener('click', function() {
+            if (confirm("确定要开始新的对话吗？未保存的更改将会丢失。")) {
+              const chatBox = document.getElementById('chatBox');
+              chatBox.innerHTML = '<div class="message frnd_message"><p>开始新的对话。<br><span>' + new Date().toLocaleString() + '</span></p></div>';
+            }
+          });
+      
+          document.getElementById('saveConversation').addEventListener('click', function() {
+            if (conversations.length >= 6) {
+              alert("对话记录已满，请删除旧的对话记录后再保存。");
+              return;
+            }
+            const name = prompt("请为这个对话命名：");
+            if (name) {
+                const conversation = document.getElementById('chatBox').innerHTML;
+                conversations.push({name: name, content: conversation});
+                updateConversationList();
+            }
+        });
+        
+        document.getElementById('clearConversation').addEventListener('click', function() {
+            document.getElementById('chatBox').innerHTML = '<div class="message frnd_message"><p>对话已清空。开始新的对话吧！<br><span>' + new Date().toLocaleString() + '</span></p></div>';
+        });
+        
+        document.getElementById('exportConversation').addEventListener('click', function() {
+            const conversation = document.getElementById('chatBox').innerText;
+            const blob = new Blob([conversation], {type: "text/plain;charset=utf-8"});
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "conversation.txt";
+            link.click();
+        });
+        
+        function updateConversationList() {
+            const list = document.getElementById('conversationList');
+            list.innerHTML = '';
+            conversations.forEach((conv, index) => {
+              const item = document.createElement('div');
+              item.className = 'conversationItem';
+              item.innerHTML = `
+                <span>${conv.name}</span>
+                <div>
+                  <button onclick="loadConversation(${index})">加载</button> 
+                  <button onclick="renameConversation(${index})">重命名</button>
+                  <button onclick="deleteConversation(${index})">删除</button>
+                </div>
+              `;
+              list.appendChild(item);
+            });
+          }
+      
+          function loadConversation(index) {
+            const chatBox = document.getElementById('chatBox');
+            chatBox.innerHTML = conversations[index].content; 
+          }
+        
+        function renameConversation(index) {
+            const newName = prompt("请输入新的名称：", conversations[index].name);
+            if (newName) {
+                conversations[index].name = newName;
+                updateConversationList();
+            }
+        }
+        
+        function deleteConversation(index) {
+            if (confirm("确定要删除这个对话吗？")) {
+                conversations.splice(index, 1);
+                updateConversationList();
+            }
+        }
+
+        document.getElementById('regenerate-button').addEventListener('click', () => {
+            if (lastUserMessage) {
+                handleSend(lastUserMessage);
+            } else {
+                alert("您还没有发送任何消息。");
+            }
+        });
+        document.getElementById('back-to-top-button').addEventListener('click', scrollToTop);
+        document.getElementById('scroll-to-bottom-button').addEventListener('click', scrollToBottom);
+
+        // Warning before closing or refreshing the page
+        window.addEventListener('beforeunload', function (e) {
+            e.preventDefault();
+            e.returnValue = ''; // This is required for Chrome and other browsers
+            return '该网页不会保存已有内容，确定要离开吗？';
+        });
+    </script>
+</body>
+</html>
